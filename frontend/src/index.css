@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-barlow bg-atsc-fondo text-atsc-azul-oscuro min-h-screen;
+  }
+}
+
+@layer components {
+  /* Botones */
+  .btn-primary {
+    @apply bg-atsc-azul-claro hover:bg-atsc-azul-medio text-white font-semibold px-5 py-2 rounded-lg text-sm transition-all duration-200 hover:-translate-y-px hover:shadow-lg flex items-center gap-2;
+  }
+  .btn-danger {
+    @apply bg-atsc-rojo hover:bg-atsc-rojo-oscuro text-white font-semibold px-5 py-2 rounded-lg text-sm transition-all duration-200 hover:-translate-y-px hover:shadow-lg flex items-center gap-2;
+  }
+  .btn-outline {
+    @apply border-2 border-atsc-azul-claro text-atsc-azul-claro hover:bg-atsc-azul-claro hover:text-white font-semibold px-5 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2;
+  }
+  .btn-ghost {
+    @apply text-atsc-gris-texto hover:text-atsc-azul-oscuro hover:bg-atsc-gris-claro font-medium px-4 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-xl border border-atsc-gris-claro shadow-sm overflow-hidden;
+  }
+  .card-header {
+    @apply flex items-center justify-between px-5 py-4 border-b border-atsc-gris-claro;
+  }
+  .card-title {
+    @apply font-condensed text-base font-bold text-atsc-azul-oscuro uppercase tracking-wide;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full px-3 py-2 border-2 border-atsc-gris-claro rounded-lg text-sm text-atsc-azul-oscuro bg-white focus:border-atsc-azul-claro focus:ring-2 focus:ring-atsc-azul-claro/10 outline-none transition-all duration-200;
+  }
+  .label {
+    @apply text-xs font-bold uppercase tracking-wide text-atsc-gris-texto mb-1 block;
+  }
+
+  /* Badges */
+  .badge-azul  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-atsc-azul-claro; }
+  .badge-rojo  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-atsc-rojo; }
+  .badge-verde { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700; }
+  .badge-gris  { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-atsc-gris-claro text-atsc-gris-texto; }
+
+  /* Tabla */
+  .table-header {
+    @apply text-xs font-bold uppercase tracking-wider text-atsc-gris-texto bg-atsc-fondo px-4 py-3 text-left;
+  }
+  .table-row {
+    @apply border-b border-atsc-gris-claro hover:bg-blue-50/40 transition-colors duration-150;
+  }
+  .table-cell {
+    @apply px-4 py-3 text-sm text-atsc-azul-oscuro;
+  }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F0F3FA; }
+::-webkit-scrollbar-thumb { background: #B0B9CC; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #6B7590; }
