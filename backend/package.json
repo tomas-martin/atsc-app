@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev":   "nodemon src/index.js",
-    "start": "node src/index.js",
-    "db:migrate": "npx prisma migrate dev",
-    "db:seed":    "node src/prisma/seed.js",
-    "db:studio":  "npx prisma studio"
-  },
+  "build":  "prisma generate --schema src/prisma/schema.prisma",
+  "start":  "node src/index.js",
+  "dev":    "nodemon src/index.js",
+  "db:migrate": "npx prisma migrate dev --schema src/prisma/schema.prisma",
+  "db:seed":    "node seed.js"
+},
   "dependencies": {
     "@prisma/client": "^5.11.0",
     "bcryptjs":       "^2.4.3",
