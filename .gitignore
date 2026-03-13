@@ -1,0 +1,28 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+ 
+# Variables de entorno (NUNCA subir esto a GitHub)
+.env
+.env.local
+.env.production
+ 
+# Build del frontend
+frontend/dist/
+frontend/build/
+ 
+# Prisma generated
+backend/node_modules/
+ 
+# Logs
+*.log
+npm-debug.log*
+ 
+# Sistema operativo
+.DS_Store
+Thumbs.db
+ 
+# VS Code
+.vscode/
+ 
