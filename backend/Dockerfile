@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:22-slim
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ RUN npm install
 
 COPY . .
 
-RUN ./node_modules/.bin/prisma generate --schema src/prisma/schema.prisma
+RUN node node_modules/prisma/build/index.js generate --schema src/prisma/schema.prisma
 
 EXPOSE 5000
 
