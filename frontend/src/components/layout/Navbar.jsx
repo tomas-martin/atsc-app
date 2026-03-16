@@ -85,7 +85,7 @@ export default function Navbar() {
               value={usuario}
               onChange={e => setUsuario(e.target.value)}
               placeholder="Usuario"
-              className="h-8 w-28 px-3 bg-white/12 border border-white/25 rounded-md text-white text-sm placeholder:text-white/40 outline-none focus:border-white/70 focus:bg-white/18 transition-all"
+              className="h-8 w-28 px-3 bg-white border border-white/50 rounded-md text-atsc-azul-oscuro text-sm placeholder:text-atsc-azul-oscuro/40 outline-none focus:border-white transition-all"
             />
             <span className="font-condensed text-xs font-bold tracking-widest uppercase text-white/75">
               Contraseña:
@@ -95,7 +95,7 @@ export default function Navbar() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••"
-              className="h-8 w-28 px-3 bg-white/12 border border-white/25 rounded-md text-white text-sm placeholder:text-white/40 outline-none focus:border-white/70 focus:bg-white/18 transition-all"
+              className="h-8 w-28 px-3 bg-white border border-white/50 rounded-md text-atsc-azul-oscuro text-sm placeholder:text-atsc-azul-oscuro/40 outline-none focus:border-white transition-all"
             />
             <button
               type="submit"

@@ -5,6 +5,9 @@ import Layout from './components/layout/Layout'
 // Páginas
 import Home       from './pages/Home'
 import Dashboard  from './pages/Dashboard'
+import Jugadores    from './pages/Jugadores'
+import JugadorForm  from './pages/JugadorForm'
+import JugadorFicha from './pages/JugadorFicha'
 
 // Rutas protegidas (requieren login)
 function PrivateRoute({ children }) {
@@ -26,7 +29,10 @@ function AppRoutes() {
 
         {/* Privadas */}
         <Route path="/dashboard"    element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/jugadores"    element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Jugadores — próximamente</div></PrivateRoute>} />
+        <Route path="/jugadores"              element={<PrivateRoute><Jugadores /></PrivateRoute>} />
+        <Route path="/jugadores/nuevo"        element={<PrivateRoute><JugadorForm /></PrivateRoute>} />
+        <Route path="/jugadores/:id"          element={<PrivateRoute><JugadorFicha /></PrivateRoute>} />
+        <Route path="/jugadores/:id/editar"   element={<PrivateRoute><JugadorForm /></PrivateRoute>} />
         <Route path="/partidos"     element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Partidos — próximamente</div></PrivateRoute>} />
         <Route path="/torneos"      element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Torneos — próximamente</div></PrivateRoute>} />
         <Route path="/estadisticas" element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Estadísticas — próximamente</div></PrivateRoute>} />
