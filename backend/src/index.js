@@ -11,6 +11,7 @@ import categoriaRoutes   from './routes/categorias.js'
 import estadisticaRoutes from './routes/estadisticas.js'
 import cuotaRoutes       from './routes/cuotas.js'
 import asistenciaRoutes  from './routes/asistencias.js'
+import clubRoutes from './routes/clubes.js'
 
 dotenv.config()
 
@@ -26,6 +27,7 @@ app.use(express.json())
 app.use(morgan('dev'))
 
 // Rutas
+app.use('/api/clubes', clubRoutes)
 app.use('/api/auth',        authRoutes)
 app.use('/api/personas',    personaRoutes)
 app.use('/api/partidos',    partidoRoutes)

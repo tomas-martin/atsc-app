@@ -101,4 +101,16 @@ router.post('/:id/cerrar', authMiddleware, async (req, res) => {
   }
 })
 
+router.put('/:id/plantel/:plantelId', authMiddleware, async (req, res) => {
+  try {
+    const pp = await prisma.plantelPartido.update({
+      where: { id: Number(req.params.plantelId) },
+      data: req.body
+    })
+    res.json(pp)
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
 export default router
