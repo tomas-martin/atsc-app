@@ -31,19 +31,18 @@ function AppRoutes() {
         <Route path="/"        element={<Home />} />
 
         {/* Privadas */}
-        <Route path="/dashboard"    element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-        <Route path="/jugadores"              element={<PrivateRoute><Jugadores /></PrivateRoute>} />
-        <Route path="/jugadores/nuevo"        element={<PrivateRoute><JugadorForm /></PrivateRoute>} />
-        <Route path="/jugadores/:id"          element={<PrivateRoute><JugadorFicha /></PrivateRoute>} />
-        <Route path="/jugadores/:id/editar"   element={<PrivateRoute><JugadorForm /></PrivateRoute>} />
-        <Route path="/partidos"     element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Partidos — próximamente</div></PrivateRoute>} />
-        <Route path="/torneos"      element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Torneos — próximamente</div></PrivateRoute>} />
-        <Route path="/estadisticas" element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Estadísticas — próximamente</div></PrivateRoute>} />
-        <Route path="/cuotas"       element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Cuotas — próximamente</div></PrivateRoute>} />
-        <Route path="/asistencia"   element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Asistencia — próximamente</div></PrivateRoute>} />
-        <Route path="/partidos"         element={<PrivateRoute><Partidos /></PrivateRoute>} />
-        <Route path="/partidos/nuevo"   element={<PrivateRoute><PartidoForm /></PrivateRoute>} />
-        <Route path="/partidos/:id"     element={<PrivateRoute><PartidoFicha /></PrivateRoute>} />
+      <Route path="/dashboard"          element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+      <Route path="/jugadores"          element={<PrivateRoute><Jugadores /></PrivateRoute>} />
+      <Route path="/jugadores/nuevo"    element={<PrivateRoute><JugadorForm /></PrivateRoute>} />
+      <Route path="/jugadores/:id"      element={<PrivateRoute><JugadorFicha /></PrivateRoute>} />
+      <Route path="/jugadores/:id/editar" element={<PrivateRoute><JugadorForm /></PrivateRoute>} />
+      <Route path="/partidos"           element={<PrivateRoute><Partidos /></PrivateRoute>} />
+      <Route path="/partidos/nuevo"     element={<PrivateRoute><PartidoForm /></PrivateRoute>} />
+      <Route path="/partidos/:id"       element={<PrivateRoute><PartidoFicha /></PrivateRoute>} />
+      <Route path="/torneos"            element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Torneos — próximamente</div></PrivateRoute>} />
+      <Route path="/estadisticas"       element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Estadísticas — próximamente</div></PrivateRoute>} />
+      <Route path="/cuotas"             element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Cuotas — próximamente</div></PrivateRoute>} />
+      <Route path="/asistencia"         element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Asistencia — próximamente</div></PrivateRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
