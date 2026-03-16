@@ -20,8 +20,8 @@ function calcularEdad(fechaNac) {
 
 function formatFecha(f) {
   if (!f) return '—'
-  const d = new Date(f)
-  return `${d.getDate()} ${MESES_NOMBRE[d.getMonth()].slice(0,3)} ${d.getFullYear()}`
+  const [anio, mes, dia] = f.split('T')[0].split('-')
+  return `${parseInt(dia)} ${MESES_NOMBRE[parseInt(mes) - 1].slice(0,3)} ${anio}`
 }
 
 function InfoRow({ icon: Icon, label, value }) {
@@ -95,7 +95,8 @@ export default function JugadorFicha() {
     </div>
   )
 
-  const edad = calcularEdad(persona.fechaNac)
+  const [a, m, d] = fechaNac.split('T')[0].split('-')
+const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
   const nombre = `${persona.apellido}, ${persona.nombre}`
   const cuotas = persona.cuotas || []
 
