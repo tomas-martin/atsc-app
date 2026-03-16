@@ -10,11 +10,12 @@ const MESES_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
 
 function calcularEdad(fechaNac) {
   if (!fechaNac) return null
+  const [a, m, d] = fechaNac.split('T')[0].split('-')
+  const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
   const hoy = new Date()
-  const nac = new Date(fechaNac)
   let edad = hoy.getFullYear() - nac.getFullYear()
-  const m = hoy.getMonth() - nac.getMonth()
-  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
+  const mes = hoy.getMonth() - nac.getMonth()
+  if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--
   return edad
 }
 
