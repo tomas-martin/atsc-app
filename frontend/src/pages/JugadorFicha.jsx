@@ -138,9 +138,14 @@ export default function JugadorFicha() {
           <div className="card overflow-hidden">
             <div className="h-2 bg-gradient-to-r from-atsc-azul-oscuro to-atsc-azul-claro" />
             <div className="p-5 text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-black text-3xl mx-auto mb-3">
-                {persona.apellido[0]}{persona.nombre[0]}
-              </div>
+              <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3">
+  {persona.foto
+    ? <img src={persona.foto} alt={nombre} className="w-full h-full object-cover" />
+    : <div className="w-full h-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-black text-3xl">
+        {persona.apellido[0]}{persona.nombre[0]}
+      </div>
+  }
+</div>
               <div className="font-condensed text-xl font-black text-atsc-azul-oscuro">{nombre}</div>
               {persona.nroSocio && (
                 <div className="text-xs text-atsc-gris-texto mt-1">Socio N° {persona.nroSocio}</div>

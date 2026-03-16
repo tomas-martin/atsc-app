@@ -157,9 +157,14 @@ export default function Jugadores() {
                     <td className="table-cell">
                       <div className="flex items-center gap-3">
                         {/* Avatar */}
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-bold text-sm flex-shrink-0">
-                          {p.apellido[0]}{p.nombre[0]}
-                        </div>
+                        <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+  {p.foto
+    ? <img src={p.foto} alt={nombre} className="w-full h-full object-cover" />
+    : <div className="w-full h-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-bold text-sm">
+        {p.apellido[0]}{p.nombre[0]}
+      </div>
+  }
+</div>
                         <div>
                           <div className="font-semibold text-atsc-azul-oscuro text-sm">{nombre}</div>
                           {p.alias && <div className="text-xs text-atsc-gris-texto">"{p.alias}"</div>}
