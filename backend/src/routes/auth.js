@@ -39,8 +39,9 @@ router.post('/login', async (req, res) => {
       user: { id: user.id, nombre: user.nombre, usuario: user.usuario, tipoId: user.tipoId }
     })
   } catch (err) {
-    res.status(500).json({ message: err.message })
-  }
+  console.error('LOGIN ERROR:', err)  // ← agregá esta línea
+  res.status(500).json({ message: err.message })
+}
 })
 
 // GET /api/auth/me
