@@ -10,19 +10,29 @@ const MESES_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
 
 function calcularEdad(fechaNac) {
   if (!fechaNac) return null
-  const [a, m, d] = fechaNac.split('T')[0].split('-')
-  const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
-  const hoy = new Date()
-  let edad = hoy.getFullYear() - nac.getFullYear()
-  const mes = hoy.getMonth() - nac.getMonth()
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--
-  return edad
+  try {
+    const parte = fechaNac.includes('T') ? fechaNac.split('T')[0] : fechaNac
+    const [a, m, d] = parte.split('-').map(Number)
+    const nac = new Date(a, m - 1, d)
+    const hoy = new Date()
+    let edad = hoy.getFullYear() - nac.getFullYear()
+    const mes = hoy.getMonth() - nac.getMonth()
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--
+    return edad
+  } catch {
+    return null
+  }
 }
 
 function formatFecha(f) {
   if (!f) return '—'
-  const [anio, mes, dia] = f.split('T')[0].split('-')
-  return `${parseInt(dia)} ${MESES_NOMBRE[parseInt(mes) - 1].slice(0,3)} ${anio}`
+  try {
+    const parte = f.includes('T') ? f.split('T')[0] : f
+    const [a, m, d] = parte.split('-').map(Number)
+    return `${d} ${MESES_NOMBRE[m - 1].slice(0, 3)} ${a}`
+  } catch {
+    return '—'
+  }
 }
 
 function InfoRow({ icon: Icon, label, value }) {
@@ -45,7 +55,11 @@ export default function JugadorFicha() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const [formCuota, setFormCuota] = useState({ mes: new Date().getMonth() + 1, anio: new Date().getFullYear(), monto: '' })
+  const [formCuota, setFormCuota] = useState({
+    mes: new Date().getMonth() + 1,
+    anio: new Date().getFullYear(),
+    monto: ''
+  })
   const [mostrarCuota, setMostrarCuota] = useState(false)
 
   const { data: persona, isLoading } = useQuery({
@@ -96,21 +110,19 @@ export default function JugadorFicha() {
     </div>
   )
 
-  const [a, m, d] = fechaNac.split('T')[0].split('-')
-const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
+  const edad = calcularEdad(persona.fechaNac)
   const nombre = `${persona.apellido}, ${persona.nombre}`
   const cuotas = persona.cuotas || []
 
   return (
     <div className="max-w-[1200px] mx-auto px-8 py-7">
 
-      {/* Encabezado */}
       <div className="flex items-center gap-4 mb-7">
         <button onClick={() => navigate('/jugadores')} className="btn-ghost px-2">
           <ArrowLeft size={18} />
         </button>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-condensed text-3xl font-black text-atsc-azul-oscuro uppercase tracking-wide">
               {nombre}
             </h1>
@@ -133,21 +145,19 @@ const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
 
       <div className="grid grid-cols-3 gap-5">
 
-        {/* Columna izquierda: Datos */}
         <div className="col-span-1 space-y-5">
 
-          {/* Avatar + stats rápidos */}
           <div className="card overflow-hidden">
             <div className="h-2 bg-gradient-to-r from-atsc-azul-oscuro to-atsc-azul-claro" />
             <div className="p-5 text-center">
               <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3">
-  {persona.foto
-    ? <img src={persona.foto} alt={nombre} className="w-full h-full object-cover" />
-    : <div className="w-full h-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-black text-3xl">
-        {persona.apellido[0]}{persona.nombre[0]}
-      </div>
-  }
-</div>
+                {persona.foto
+                  ? <img src={persona.foto} alt={nombre} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-black text-3xl">
+                      {persona.apellido[0]}{persona.nombre[0]}
+                    </div>
+                }
+              </div>
               <div className="font-condensed text-xl font-black text-atsc-azul-oscuro">{nombre}</div>
               {persona.nroSocio && (
                 <div className="text-xs text-atsc-gris-texto mt-1">Socio N° {persona.nroSocio}</div>
@@ -161,27 +171,25 @@ const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
             </div>
           </div>
 
-          {/* Datos personales */}
           <div className="card">
             <div className="card-header">
               <span className="card-title">Datos Personales</span>
             </div>
             <div className="px-4 pb-2">
-              <InfoRow icon={CreditCard} label="DNI" value={persona.documento} />
-              <InfoRow icon={CreditCard} label="N° Carnet" value={persona.nroCarnet} />
-              <InfoRow icon={Calendar}   label="Nacimiento" value={formatFecha(persona.fechaNac)} />
+              <InfoRow icon={CreditCard} label="DNI"             value={persona.documento} />
+              <InfoRow icon={CreditCard} label="N° Carnet"       value={persona.nroCarnet} />
+              <InfoRow icon={Calendar}   label="Nacimiento"      value={formatFecha(persona.fechaNac)} />
               <InfoRow icon={Trophy}     label="Grupo sanguíneo" value={persona.grupo} />
-              <InfoRow icon={Trophy}     label="Obra social" value={persona.obraSocial} />
+              <InfoRow icon={Trophy}     label="Obra social"     value={persona.obraSocial} />
             </div>
           </div>
 
-          {/* Contacto */}
           <div className="card">
             <div className="card-header">
               <span className="card-title">Contacto</span>
             </div>
             <div className="px-4 pb-2">
-              <InfoRow icon={MapPin} label="Domicilio" value={persona.domicilio} />
+              <InfoRow icon={MapPin} label="Domicilio"  value={persona.domicilio} />
               <InfoRow icon={MapPin} label="Localidad"  value={persona.localidad} />
               <InfoRow icon={Phone}  label="Teléfono"   value={persona.telefono} />
               <InfoRow icon={Phone}  label="Teléfono 2" value={persona.telefono1} />
@@ -192,36 +200,28 @@ const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
           </div>
         </div>
 
-        {/* Columna derecha: Cuotas + historial */}
         <div className="col-span-2 space-y-5">
 
-          {/* Cuotas */}
           <div className="card">
             <div className="card-header">
               <span className="card-title flex items-center gap-2">
                 <CreditCard size={14} /> Cuotas
               </span>
-              <button
-                onClick={() => setMostrarCuota(v => !v)}
-                className="btn-primary text-xs px-3 py-1.5"
-              >
+              <button onClick={() => setMostrarCuota(v => !v)} className="btn-primary text-xs px-3 py-1.5">
                 <Plus size={13} />
                 Registrar cuota
               </button>
             </div>
 
-            {/* Formulario nueva cuota */}
             {mostrarCuota && (
               <div className="mx-4 mb-4 p-4 bg-atsc-fondo rounded-xl border border-atsc-gris-claro">
                 <p className="label mb-3">Nueva cuota</p>
-                <form onSubmit={handleAddCuota} className="flex items-end gap-3">
+                <form onSubmit={handleAddCuota} className="flex items-end gap-3 flex-wrap">
                   <div>
                     <label className="label">Mes</label>
-                    <select
-                      value={formCuota.mes}
+                    <select value={formCuota.mes}
                       onChange={e => setFormCuota(f => ({ ...f, mes: e.target.value }))}
-                      className="input w-36"
-                    >
+                      className="input w-36">
                       {MESES_NOMBRE.map((m, i) => (
                         <option key={i} value={i + 1}>{m}</option>
                       ))}
@@ -229,20 +229,15 @@ const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
                   </div>
                   <div>
                     <label className="label">Año</label>
-                    <input
-                      type="number" value={formCuota.anio} min="2020" max="2030"
+                    <input type="number" value={formCuota.anio} min="2020" max="2030"
                       onChange={e => setFormCuota(f => ({ ...f, anio: e.target.value }))}
-                      className="input w-24"
-                    />
+                      className="input w-24" />
                   </div>
                   <div>
                     <label className="label">Monto ($)</label>
-                    <input
-                      type="number" value={formCuota.monto} min="0" step="0.01"
+                    <input type="number" value={formCuota.monto} min="0" step="0.01"
                       onChange={e => setFormCuota(f => ({ ...f, monto: e.target.value }))}
-                      placeholder="5000"
-                      className="input w-28"
-                    />
+                      placeholder="5000" className="input w-28" />
                   </div>
                   <button type="submit" disabled={addCuota.isLoading} className="btn-primary">
                     {addCuota.isLoading ? '...' : 'Guardar'}
@@ -254,7 +249,6 @@ const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
               </div>
             )}
 
-            {/* Lista de cuotas */}
             {cuotas.length === 0 ? (
               <div className="text-center py-8 text-atsc-gris-texto text-sm">
                 No hay cuotas registradas
@@ -283,9 +277,7 @@ const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
                       </td>
                       <td className="table-cell">
                         <button
-                          onClick={() => {
-                            if (confirm('¿Eliminar esta cuota?')) delCuota.mutate(c.id)
-                          }}
+                          onClick={() => { if (confirm('¿Eliminar esta cuota?')) delCuota.mutate(c.id) }}
                           className="btn-ghost px-2 py-1 text-atsc-rojo hover:bg-red-50"
                         >
                           <Trash2 size={13} />
@@ -308,46 +300,6 @@ const nac = new Date(parseInt(a), parseInt(m) - 1, parseInt(d))
               </table>
             )}
           </div>
-
-          {/* Historial de partidos */}
-          {persona.plantelPartidos && persona.plantelPartidos.length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title flex items-center gap-2">
-                  <Trophy size={14} /> Historial de Partidos
-                </span>
-                <span className="badge-azul">{persona.plantelPartidos.length} partidos</span>
-              </div>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-atsc-gris-claro">
-                    <th className="table-header">Fecha</th>
-                    <th className="table-header">Partido</th>
-                    <th className="table-header text-center">Goles</th>
-                    <th className="table-header text-center">⚠️</th>
-                    <th className="table-header text-center">🟦</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {persona.plantelPartidos.slice(0, 10).map(pp => (
-                    <tr key={pp.id} className="table-row">
-                      <td className="table-cell text-sm">—</td>
-                      <td className="table-cell text-sm">Partido #{pp.partidoId}</td>
-                      <td className="table-cell text-center">
-                        {pp.goles > 0 ? <span className="badge-verde">{pp.goles}</span> : '—'}
-                      </td>
-                      <td className="table-cell text-center">
-                        {pp.amarillas > 0 ? <span className="badge-rojo">{pp.amarillas}</span> : '—'}
-                      </td>
-                      <td className="table-cell text-center">
-                        {pp.azules > 0 ? <span className="badge-azul">{pp.azules}</span> : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
         </div>
       </div>
