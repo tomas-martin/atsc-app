@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Users, Search, Plus, Filter, ChevronLeft, ChevronRight, Eye, Pencil, UserX } from 'lucide-react'
+import { Users, Search, Plus, Filter, ChevronLeft, ChevronRight, Eye, Pencil, UserX, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { personaService } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -9,18 +9,47 @@ const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov'
 
 function formatFecha(fecha) {
   if (!fecha) return '—'
-  const d = new Date(fecha)
-  return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`
+  try {
+    const parte = fecha.includes('T') ? fecha.split('T')[0] : fecha
+    const [a, m, d] = parte.split('-').map(Number)
+    return `${d} ${MESES[m-1]} ${a}`
+  } catch { return '—' }
 }
 
 function calcularEdad(fechaNac) {
   if (!fechaNac) return null
-  const hoy = new Date()
-  const nac = new Date(fechaNac)
-  let edad = hoy.getFullYear() - nac.getFullYear()
-  const m = hoy.getMonth() - nac.getMonth()
-  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
-  return edad
+  try {
+    const parte = fechaNac.includes('T') ? fechaNac.split('T')[0] : fechaNac
+    const [a, m, d] = parte.split('-').map(Number)
+    const nac = new Date(a, m - 1, d)
+    const hoy = new Date()
+    let edad = hoy.getFullYear() - nac.getFullYear()
+    const mes = hoy.getMonth() - nac.getMonth()
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--
+    return edad
+  } catch { return null }
+}
+
+function SortIcon({ campo, sortBy, sortDir }) {
+  if (sortBy !== campo) return <ChevronsUpDown size={13} className="text-atsc-gris-claro" />
+  return sortDir === 'asc'
+    ? <ChevronUp size={13} className="text-atsc-azul-claro" />
+    : <ChevronDown size={13} className="text-atsc-azul-claro" />
+}
+
+function ThSortable({ campo, label, sortBy, sortDir, onSort, className = '' }) {
+  const activo = sortBy === campo
+  return (
+    <th
+      className={`table-header cursor-pointer select-none hover:text-atsc-azul-oscuro transition-colors ${activo ? 'text-atsc-azul-claro' : ''} ${className}`}
+      onClick={() => onSort(campo)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <SortIcon campo={campo} sortBy={sortBy} sortDir={sortDir} />
+      </div>
+    </th>
+  )
 }
 
 export default function Jugadores() {
@@ -28,17 +57,80 @@ export default function Jugadores() {
   const [buscar, setBuscar]   = useState('')
   const [estado, setEstado]   = useState('true')
   const [page, setPage]       = useState(1)
-  const limit = 20
+  const [sortBy, setSortBy]   = useState('apellido')
+  const [sortDir, setSortDir] = useState('asc')
+  const limit = 50 // traemos más para ordenar client-side
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['personas', buscar, estado, page],
-    queryFn: () => personaService.getAll({ buscar: buscar || undefined, estado, page, limit }).then(r => r.data),
+    queryKey: ['personas', buscar, estado],
+    queryFn: () => personaService.getAll({
+      buscar: buscar || undefined,
+      estado,
+      page: 1,
+      limit: 500 // traer todos para ordenar
+    }).then(r => r.data),
     keepPreviousData: true,
   })
 
-  const personas = data?.data || []
-  const total    = data?.total || 0
+  const todasPersonas = data?.data || []
+
+  // Ordenamiento client-side
+  const personas = useMemo(() => {
+    const sorted = [...todasPersonas].sort((a, b) => {
+      let valA, valB
+
+      switch (sortBy) {
+        case 'apellido':
+          valA = `${a.apellido} ${a.nombre}`.toLowerCase()
+          valB = `${b.apellido} ${b.nombre}`.toLowerCase()
+          break
+        case 'nombre':
+          valA = `${a.nombre} ${a.apellido}`.toLowerCase()
+          valB = `${b.nombre} ${b.apellido}`.toLowerCase()
+          break
+        case 'documento':
+          valA = Number(a.documento) || 0
+          valB = Number(b.documento) || 0
+          break
+        case 'edad':
+          valA = calcularEdad(a.fechaNac) ?? -1
+          valB = calcularEdad(b.fechaNac) ?? -1
+          break
+        case 'nroSocio':
+          valA = Number(a.nroSocio) || 0
+          valB = Number(b.nroSocio) || 0
+          break
+        case 'localidad':
+          valA = (a.localidad || '').toLowerCase()
+          valB = (b.localidad || '').toLowerCase()
+          break
+        default:
+          valA = a.apellido.toLowerCase()
+          valB = b.apellido.toLowerCase()
+      }
+
+      if (valA < valB) return sortDir === 'asc' ? -1 : 1
+      if (valA > valB) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+
+    // Paginación client-side
+    const start = (page - 1) * limit
+    return sorted.slice(start, start + limit)
+  }, [todasPersonas, sortBy, sortDir, page])
+
+  const total    = todasPersonas.length
   const totalPag = Math.ceil(total / limit)
+
+  const handleSort = (campo) => {
+    if (sortBy === campo) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(campo)
+      setSortDir('asc')
+    }
+    setPage(1)
+  }
 
   const handleBuscar = (e) => {
     setBuscar(e.target.value)
@@ -72,10 +164,7 @@ export default function Jugadores() {
             Gestión de personas y socios del club
           </p>
         </div>
-        <button
-          onClick={() => navigate('/jugadores/nuevo')}
-          className="btn-primary"
-        >
+        <button onClick={() => navigate('/jugadores/nuevo')} className="btn-primary">
           <Plus size={16} />
           Nuevo Jugador
         </button>
@@ -83,9 +172,7 @@ export default function Jugadores() {
 
       {/* Filtros */}
       <div className="card mb-5">
-        <div className="p-4 flex items-center gap-4">
-
-          {/* Búsqueda */}
+        <div className="p-4 flex items-center gap-4 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-atsc-gris-texto" />
             <input
@@ -96,25 +183,18 @@ export default function Jugadores() {
               className="input pl-9"
             />
           </div>
-
-          {/* Estado */}
           <div className="flex items-center gap-2">
             <Filter size={14} className="text-atsc-gris-texto" />
             <label className="label mb-0">Estado:</label>
-            <select
-              value={estado}
-              onChange={e => { setEstado(e.target.value); setPage(1) }}
-              className="input w-auto"
-            >
+            <select value={estado} onChange={e => { setEstado(e.target.value); setPage(1) }} className="input w-auto">
               <option value="true">Activos</option>
               <option value="false">Inactivos</option>
               <option value="">Todos</option>
             </select>
           </div>
-
-          {/* Total */}
           <span className="ml-auto text-sm text-atsc-gris-texto">
             {total} resultado{total !== 1 ? 's' : ''}
+            {sortBy && <span className="ml-2 badge-azul">Ordenado por {sortBy} {sortDir === 'asc' ? '↑' : '↓'}</span>}
           </span>
         </div>
       </div>
@@ -129,59 +209,57 @@ export default function Jugadores() {
           <div className="text-center py-16">
             <Users size={40} className="text-atsc-gris-claro mx-auto mb-3" />
             <p className="text-atsc-gris-texto font-medium">No se encontraron jugadores</p>
-            <p className="text-sm text-atsc-gris-texto mt-1">
-              {buscar ? 'Probá con otra búsqueda' : 'Agregá el primer jugador con el botón de arriba'}
-            </p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-atsc-gris-claro">
                 <th className="table-header w-10">#</th>
-                <th className="table-header">Jugador</th>
-                <th className="table-header">DNI</th>
-                <th className="table-header">Edad</th>
-                <th className="table-header">Teléfono</th>
+                <ThSortable campo="apellido"  label="Apellido"  sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="nombre"    label="Nombre"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="documento" label="DNI"       sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="edad"      label="Edad"      sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="nroSocio"  label="N° Socio"  sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="localidad" label="Localidad" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
                 <th className="table-header">Tipo</th>
                 <th className="table-header">Estado</th>
                 <th className="table-header text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {personas.map((p) => {
-                const edad = calcularEdad(p.fechaNac)
+              {personas.map((p, idx) => {
+                const edad   = calcularEdad(p.fechaNac)
                 const nombre = `${p.apellido}, ${p.nombre}`
                 return (
                   <tr key={p.id} className="table-row">
-                    <td className="table-cell text-atsc-gris-texto text-xs">{p.id}</td>
+                    <td className="table-cell text-atsc-gris-texto text-xs">
+                      {(page - 1) * limit + idx + 1}
+                    </td>
                     <td className="table-cell">
                       <div className="flex items-center gap-3">
-                        {/* Avatar */}
                         <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-  {p.foto
-    ? <img src={p.foto} alt={nombre} className="w-full h-full object-cover" />
-    : <div className="w-full h-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-bold text-sm">
-        {p.apellido[0]}{p.nombre[0]}
-      </div>
-  }
-</div>
-                        <div>
-                          <div className="font-semibold text-atsc-azul-oscuro text-sm">{nombre}</div>
-                          {p.alias && <div className="text-xs text-atsc-gris-texto">"{p.alias}"</div>}
+                          {p.foto
+                            ? <img src={p.foto} alt={nombre} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full bg-gradient-to-br from-atsc-azul-claro to-atsc-azul-oscuro flex items-center justify-center text-white font-condensed font-bold text-sm">
+                                {p.apellido[0]}{p.nombre[0]}
+                              </div>
+                          }
                         </div>
+                        <span className="font-semibold text-atsc-azul-oscuro text-sm">{p.apellido}</span>
                       </div>
                     </td>
-                    <td className="table-cell text-sm">{p.documento || '—'}</td>
                     <td className="table-cell text-sm">
-                      {edad !== null ? `${edad} años` : '—'}
+                      {p.nombre}
+                      {p.alias && <div className="text-xs text-atsc-gris-texto">"{p.alias}"</div>}
                     </td>
-                    <td className="table-cell text-sm">{p.telefono || '—'}</td>
+                    <td className="table-cell text-sm">{p.documento || '—'}</td>
+                    <td className="table-cell text-sm">{edad !== null ? `${edad} años` : '—'}</td>
+                    <td className="table-cell text-sm">{p.nroSocio || '—'}</td>
+                    <td className="table-cell text-sm">{p.localidad || '—'}</td>
                     <td className="table-cell">
                       <div className="flex flex-wrap gap-1">
                         {p.tiposPersona?.map(tp => (
-                          <span key={tp.tipoId} className="badge-azul text-[11px]">
-                            {tp.tipo?.nombre}
-                          </span>
+                          <span key={tp.tipoId} className="badge-azul text-[11px]">{tp.tipo?.nombre}</span>
                         ))}
                         {(!p.tiposPersona || p.tiposPersona.length === 0) && (
                           <span className="badge-gris text-[11px]">Sin tipo</span>
@@ -195,26 +273,17 @@ export default function Jugadores() {
                     </td>
                     <td className="table-cell text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => navigate(`/jugadores/${p.id}`)}
-                          className="btn-ghost px-2 py-1.5 text-xs"
-                          title="Ver ficha"
-                        >
+                        <button onClick={() => navigate(`/jugadores/${p.id}`)}
+                          className="btn-ghost px-2 py-1.5 text-xs" title="Ver ficha">
                           <Eye size={14} />
                         </button>
-                        <button
-                          onClick={() => navigate(`/jugadores/${p.id}/editar`)}
-                          className="btn-ghost px-2 py-1.5 text-xs"
-                          title="Editar"
-                        >
+                        <button onClick={() => navigate(`/jugadores/${p.id}/editar`)}
+                          className="btn-ghost px-2 py-1.5 text-xs" title="Editar">
                           <Pencil size={14} />
                         </button>
                         {p.estado && (
-                          <button
-                            onClick={() => handleDesactivar(p.id, nombre)}
-                            className="btn-ghost px-2 py-1.5 text-xs text-atsc-rojo hover:bg-red-50"
-                            title="Desactivar"
-                          >
+                          <button onClick={() => handleDesactivar(p.id, nombre)}
+                            className="btn-ghost px-2 py-1.5 text-xs text-atsc-rojo hover:bg-red-50" title="Desactivar">
                             <UserX size={14} />
                           </button>
                         )}
@@ -227,27 +296,16 @@ export default function Jugadores() {
           </table>
         )}
 
-        {/* Paginación */}
         {totalPag > 1 && (
           <div className="px-4 py-3 border-t border-atsc-gris-claro flex items-center justify-between">
             <span className="text-sm text-atsc-gris-texto">
-              Página {page} de {totalPag}
+              Mostrando {(page-1)*limit+1}–{Math.min(page*limit, total)} de {total}
             </span>
             <div className="flex gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="btn-ghost px-2 py-1 disabled:opacity-40"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                onClick={() => setPage(p => Math.min(totalPag, p + 1))}
-                disabled={page === totalPag}
-                className="btn-ghost px-2 py-1 disabled:opacity-40"
-              >
-                <ChevronRight size={16} />
-              </button>
+              <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+                className="btn-ghost px-2 py-1 disabled:opacity-40"><ChevronLeft size={16} /></button>
+              <button onClick={() => setPage(p => Math.min(totalPag, p+1))} disabled={page===totalPag}
+                className="btn-ghost px-2 py-1 disabled:opacity-40"><ChevronRight size={16} /></button>
             </div>
           </div>
         )}

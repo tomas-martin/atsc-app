@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Plus, Eye, ChevronLeft, ChevronRight, Trophy, Lock } from 'lucide-react'
+import { Calendar, Plus, Eye, ChevronLeft, ChevronRight, Trophy, Lock, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { partidoService, torneoService } from '../services/api'
 
 function formatFecha(f) {
@@ -14,11 +14,35 @@ function formatFecha(f) {
   } catch { return '—' }
 }
 
+function SortIcon({ campo, sortBy, sortDir }) {
+  if (sortBy !== campo) return <ChevronsUpDown size={13} className="text-atsc-gris-claro" />
+  return sortDir === 'asc'
+    ? <ChevronUp size={13} className="text-atsc-azul-claro" />
+    : <ChevronDown size={13} className="text-atsc-azul-claro" />
+}
+
+function ThSortable({ campo, label, sortBy, sortDir, onSort, className = '' }) {
+  const activo = sortBy === campo
+  return (
+    <th
+      className={`table-header cursor-pointer select-none hover:text-atsc-azul-oscuro transition-colors ${activo ? 'text-atsc-azul-claro' : ''} ${className}`}
+      onClick={() => onSort(campo)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <SortIcon campo={campo} sortBy={sortBy} sortDir={sortDir} />
+      </div>
+    </th>
+  )
+}
+
 export default function Partidos() {
   const navigate = useNavigate()
   const [torneoId, setTorneoId] = useState('')
-  const [page, setPage] = useState(1)
-  const limit = 20
+  const [page, setPage]         = useState(1)
+  const [sortBy, setSortBy]     = useState('fecha')
+  const [sortDir, setSortDir]   = useState('desc')
+  const limit = 50
 
   const { data: torneos } = useQuery({
     queryKey: ['torneos'],
@@ -26,17 +50,84 @@ export default function Partidos() {
   })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['partidos', torneoId, page],
+    queryKey: ['partidos', torneoId],
     queryFn: () => partidoService.getAll({
       torneoId: torneoId || undefined,
-      page, limit
+      page: 1,
+      limit: 500
     }).then(r => r.data),
     keepPreviousData: true,
   })
 
-  const partidos  = data?.data  || []
-  const total     = data?.total || 0
-  const totalPag  = Math.ceil(total / limit)
+  const todosPartidos = data?.data || []
+
+  const partidos = useMemo(() => {
+    const sorted = [...todosPartidos].sort((a, b) => {
+      let valA, valB
+
+      switch (sortBy) {
+        case 'fecha':
+          valA = a.fecha || ''
+          valB = b.fecha || ''
+          break
+        case 'fechaNro':
+          valA = Number(a.fechaNro) || 0
+          valB = Number(b.fechaNro) || 0
+          break
+        case 'torneo':
+          valA = (a.torneo?.nombre || '').toLowerCase()
+          valB = (b.torneo?.nombre || '').toLowerCase()
+          break
+        case 'local':
+          valA = (a.equipoLocal?.nombre || '').toLowerCase()
+          valB = (b.equipoLocal?.nombre || '').toLowerCase()
+          break
+        case 'visitante':
+          valA = (a.equipoVisitante?.nombre || '').toLowerCase()
+          valB = (b.equipoVisitante?.nombre || '').toLowerCase()
+          break
+        case 'golesLocal':
+          valA = Number(a.golesLocal) || 0
+          valB = Number(b.golesLocal) || 0
+          break
+        case 'golesVisitante':
+          valA = Number(a.golesVisitante) || 0
+          valB = Number(b.golesVisitante) || 0
+          break
+        case 'totalGoles':
+          valA = (Number(a.golesLocal) || 0) + (Number(a.golesVisitante) || 0)
+          valB = (Number(b.golesLocal) || 0) + (Number(b.golesVisitante) || 0)
+          break
+        case 'estado':
+          valA = a.cerrado ? 1 : 0
+          valB = b.cerrado ? 1 : 0
+          break
+        default:
+          valA = a.fecha || ''
+          valB = b.fecha || ''
+      }
+
+      if (valA < valB) return sortDir === 'asc' ? -1 : 1
+      if (valA > valB) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+
+    const start = (page - 1) * limit
+    return sorted.slice(start, start + limit)
+  }, [todosPartidos, sortBy, sortDir, page])
+
+  const total    = todosPartidos.length
+  const totalPag = Math.ceil(total / limit)
+
+  const handleSort = (campo) => {
+    if (sortBy === campo) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(campo)
+      setSortDir(campo === 'fecha' ? 'desc' : 'asc')
+    }
+    setPage(1)
+  }
 
   return (
     <div className="max-w-[1400px] mx-auto px-8 py-7">
@@ -60,16 +151,12 @@ export default function Partidos() {
         </button>
       </div>
 
-      {/* Filtro torneo */}
+      {/* Filtros */}
       <div className="card mb-5">
-        <div className="p-4 flex items-center gap-4">
+        <div className="p-4 flex items-center gap-4 flex-wrap">
           <Trophy size={15} className="text-atsc-gris-texto" />
           <label className="label mb-0">Torneo:</label>
-          <select
-            value={torneoId}
-            onChange={e => { setTorneoId(e.target.value); setPage(1) }}
-            className="input w-72"
-          >
+          <select value={torneoId} onChange={e => { setTorneoId(e.target.value); setPage(1) }} className="input w-72">
             <option value="">— Todos los torneos —</option>
             {torneos?.map(t => (
               <option key={t.id} value={t.id}>{t.nombre}</option>
@@ -77,6 +164,7 @@ export default function Partidos() {
           </select>
           <span className="ml-auto text-sm text-atsc-gris-texto">
             {total} partido{total !== 1 ? 's' : ''}
+            {sortBy && <span className="ml-2 badge-azul">Ordenado por {sortBy} {sortDir === 'asc' ? '↑' : '↓'}</span>}
           </span>
         </div>
       </div>
@@ -91,44 +179,43 @@ export default function Partidos() {
           <div className="text-center py-16">
             <Calendar size={40} className="text-atsc-gris-claro mx-auto mb-3" />
             <p className="text-atsc-gris-texto font-medium">No hay partidos cargados</p>
-            <p className="text-sm text-atsc-gris-texto mt-1">
-              Creá el primer partido con el botón de arriba
-            </p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-atsc-gris-claro">
-                <th className="table-header">Fecha</th>
-                <th className="table-header">Torneo</th>
-                <th className="table-header text-center">Fecha N°</th>
-                <th className="table-header">Local</th>
-                <th className="table-header text-center">Resultado</th>
-                <th className="table-header">Visitante</th>
-                <th className="table-header text-center">Estado</th>
-                <th className="table-header text-right">Acciones</th>
+                <ThSortable campo="fecha"          label="Fecha"      sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="torneo"         label="Torneo"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="fechaNro"       label="Fecha N°"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
+                <ThSortable campo="local"          label="Local"      sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="golesLocal"     label="GL"         sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
+                <th className="table-header text-center">-</th>
+                <ThSortable campo="golesVisitante" label="GV"         sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
+                <ThSortable campo="visitante"      label="Visitante"  sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+                <ThSortable campo="totalGoles"     label="Total Goles" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
+                <ThSortable campo="estado"         label="Estado"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
+                <th className="table-header text-right">Ver</th>
               </tr>
             </thead>
             <tbody>
               {partidos.map(p => (
                 <tr key={p.id} className="table-row">
                   <td className="table-cell text-sm">{formatFecha(p.fecha)}</td>
-                  <td className="table-cell text-sm text-atsc-gris-texto">
-                    {p.torneo?.nombre || '—'}
-                  </td>
+                  <td className="table-cell text-sm text-atsc-gris-texto">{p.torneo?.nombre || '—'}</td>
                   <td className="table-cell text-center text-sm">
-                    {p.fechaNro ? `F${p.fechaNro}` : '—'}
+                    {p.fechaNro ? <span className="badge-azul">F{p.fechaNro}</span> : '—'}
                   </td>
-                  <td className="table-cell font-semibold text-sm">
-                    {p.equipoLocal?.nombre || '—'}
-                  </td>
+                  <td className="table-cell font-semibold text-sm">{p.equipoLocal?.nombre || '—'}</td>
                   <td className="table-cell text-center">
-                    <span className="font-condensed font-black text-lg text-atsc-azul-oscuro">
-                      {p.golesLocal} - {p.golesVisitante}
-                    </span>
+                    <span className="font-condensed font-black text-lg text-atsc-azul-oscuro">{p.golesLocal}</span>
                   </td>
-                  <td className="table-cell font-semibold text-sm">
-                    {p.equipoVisitante?.nombre || '—'}
+                  <td className="table-cell text-center text-atsc-gris-texto font-bold">-</td>
+                  <td className="table-cell text-center">
+                    <span className="font-condensed font-black text-lg text-atsc-azul-oscuro">{p.golesVisitante}</span>
+                  </td>
+                  <td className="table-cell font-semibold text-sm">{p.equipoVisitante?.nombre || '—'}</td>
+                  <td className="table-cell text-center text-sm text-atsc-gris-texto">
+                    {Number(p.golesLocal) + Number(p.golesVisitante)}
                   </td>
                   <td className="table-cell text-center">
                     {p.cerrado
@@ -137,11 +224,8 @@ export default function Partidos() {
                     }
                   </td>
                   <td className="table-cell text-right">
-                    <button
-                      onClick={() => navigate(`/partidos/${p.id}`)}
-                      className="btn-ghost px-2 py-1.5 text-xs"
-                      title="Ver planilla"
-                    >
+                    <button onClick={() => navigate(`/partidos/${p.id}`)}
+                      className="btn-ghost px-2 py-1.5 text-xs" title="Ver planilla">
                       <Eye size={14} />
                     </button>
                   </td>
@@ -153,7 +237,9 @@ export default function Partidos() {
 
         {totalPag > 1 && (
           <div className="px-4 py-3 border-t border-atsc-gris-claro flex items-center justify-between">
-            <span className="text-sm text-atsc-gris-texto">Página {page} de {totalPag}</span>
+            <span className="text-sm text-atsc-gris-texto">
+              Mostrando {(page-1)*limit+1}–{Math.min(page*limit, total)} de {total}
+            </span>
             <div className="flex gap-2">
               <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
                 className="btn-ghost px-2 py-1 disabled:opacity-40"><ChevronLeft size={16} /></button>
