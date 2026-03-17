@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Search, Filter, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Trophy, Search, Filter, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown, X } from 'lucide-react'
 import { torneoService, categoriaService } from '../services/api'
 
 function SortIcon({ campo, sortBy, sortDir }) {
@@ -20,19 +20,16 @@ function Th({ campo, label, sortBy, sortDir, onSort, className = '' }) {
 
 export default function Torneos() {
   const navigate = useNavigate()
-  const [filtroAnio, setFiltroAnio]       = useState('')
-  const [filtroNombre, setFiltroNombre]   = useState('')
+  const [filtroAnio, setFiltroAnio]           = useState('')
+  const [filtroNombre, setFiltroNombre]       = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
+  const [filtroEstado, setFiltroEstado]       = useState('')
   const [sortBy, setSortBy]   = useState('fecha')
   const [sortDir, setSortDir] = useState('desc')
 
   const { data: torneos = [], isLoading } = useQuery({
-    queryKey: ['torneos', filtroAnio, filtroNombre, filtroCategoria],
-    queryFn: () => torneoService.getAll({
-      anio:      filtroAnio      || undefined,
-      nombre:    filtroNombre    || undefined,
-      categoria: filtroCategoria || undefined,
-    }).then(r => r.data),
+    queryKey: ['torneos'],
+    queryFn: () => torneoService.getAll().then(r => r.data),
   })
 
   const { data: categorias = [] } = useQuery({
@@ -46,30 +43,43 @@ export default function Torneos() {
     return [...set].sort((a, b) => b - a)
   }, [torneos])
 
+  // Filtrar + ordenar
   const sorted = useMemo(() => {
-    return [...torneos].sort((a, b) => {
+    let lista = [...torneos]
+
+    if (filtroAnio)      lista = lista.filter(t => t.fecha === filtroAnio)
+    if (filtroCategoria) lista = lista.filter(t => String(t.categoriaId) === String(filtroCategoria))
+    if (filtroNombre)    lista = lista.filter(t => t.nombre?.toLowerCase().includes(filtroNombre.toLowerCase()))
+    // Estado: activo = tiene partidos sin cerrar (aproximamos: torneos recientes)
+    // Como no tenemos campo estado directo, filtramos por año si piden activos
+    if (filtroEstado === 'activo')     lista = lista.filter(t => t.fecha === String(new Date().getFullYear()))
+    if (filtroEstado === 'finalizado') lista = lista.filter(t => t.fecha < String(new Date().getFullYear()))
+
+    return lista.sort((a, b) => {
       let valA, valB
       switch (sortBy) {
-        case 'fecha':    valA = a.fecha || ''; valB = b.fecha || ''; break
-        case 'nombre':   valA = (a.nombre||'').toLowerCase(); valB = (b.nombre||'').toLowerCase(); break
+        case 'fecha':     valA = a.fecha||''; valB = b.fecha||''; break
+        case 'nombre':    valA = (a.nombre||'').toLowerCase(); valB = (b.nombre||'').toLowerCase(); break
         case 'categoria': valA = (a.categoria?.nombre||'').toLowerCase(); valB = (b.categoria?.nombre||'').toLowerCase(); break
         default: valA = a.fecha||''; valB = b.fecha||''
       }
-      if (valA < valB) return sortDir === 'asc' ? -1 : 1
-      if (valA > valB) return sortDir === 'asc' ? 1 : -1
+      if (valA < valB) return sortDir==='asc'?-1:1
+      if (valA > valB) return sortDir==='asc'?1:-1
       return 0
     })
-  }, [torneos, sortBy, sortDir])
+  }, [torneos, filtroAnio, filtroNombre, filtroCategoria, filtroEstado, sortBy, sortDir])
 
   const handleSort = (campo) => {
-    if (sortBy === campo) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    if (sortBy===campo) setSortDir(d=>d==='asc'?'desc':'asc')
     else { setSortBy(campo); setSortDir('asc') }
   }
+
+  const limpiar = () => { setFiltroAnio(''); setFiltroNombre(''); setFiltroCategoria(''); setFiltroEstado('') }
+  const hayFiltros = filtroAnio || filtroNombre || filtroCategoria || filtroEstado
 
   return (
     <div className="max-w-[1200px] mx-auto px-8 py-7">
 
-      {/* Encabezado */}
       <div className="flex items-start justify-between mb-7">
         <div>
           <h1 className="font-condensed text-3xl font-black text-atsc-azul-oscuro uppercase tracking-wide flex items-center gap-3">
@@ -78,53 +88,75 @@ export default function Torneos() {
             </span>
             Torneos
           </h1>
-          <p className="text-sm text-atsc-gris-texto mt-1 ml-[52px]">
-            {sorted.length} torneo{sorted.length !== 1 ? 's' : ''}
-          </p>
+          <p className="text-sm text-atsc-gris-texto mt-1 ml-[52px]">{sorted.length} torneo{sorted.length!==1?'s':''}</p>
         </div>
       </div>
 
       {/* Filtros */}
       <div className="card mb-5">
-        <div className="p-4 flex items-center gap-4 flex-wrap">
-          <Filter size={14} className="text-atsc-gris-texto" />
-
-          <div>
-            <label className="label mb-1">Año</label>
-            <select value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)} className="input w-28">
-              <option value="">Todos</option>
-              {anios.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Filter size={13} className="text-atsc-gris-texto" />
+            <span className="text-xs font-bold uppercase tracking-wide text-atsc-gris-texto">Filtros</span>
+            {hayFiltros && (
+              <button onClick={limpiar} className="ml-auto btn-ghost text-xs px-2 py-1 flex items-center gap-1">
+                <X size={12} />Limpiar
+              </button>
+            )}
           </div>
+          <div className="flex items-end gap-4 flex-wrap">
 
-          <div className="flex-1 max-w-xs">
-            <label className="label mb-1">Torneo</label>
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-atsc-gris-texto" />
-              <input
-                value={filtroNombre}
-                onChange={e => setFiltroNombre(e.target.value)}
-                placeholder="Buscar por nombre..."
-                className="input pl-9"
-              />
+            {/* Año */}
+            <div>
+              <label className="label">Año</label>
+              <select value={filtroAnio} onChange={e=>setFiltroAnio(e.target.value)} className="input w-28">
+                <option value="">Todos</option>
+                {anios.map(a=><option key={a} value={a}>{a}</option>)}
+              </select>
             </div>
+
+            {/* Categoría */}
+            <div>
+              <label className="label">Categoría</label>
+              <select value={filtroCategoria} onChange={e=>setFiltroCategoria(e.target.value)} className="input w-40">
+                <option value="">Todas</option>
+                {categorias.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+
+            {/* Nombre */}
+            <div className="flex-1 max-w-xs">
+              <label className="label">Nombre</label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-atsc-gris-texto" />
+                <input value={filtroNombre} onChange={e=>setFiltroNombre(e.target.value)}
+                  placeholder="Apertura, Clausura..." className="input pl-9" />
+              </div>
+            </div>
+
+            {/* Estado */}
+            <div>
+              <label className="label">Estado</label>
+              <div className="flex rounded-lg overflow-hidden border-2 border-atsc-gris-claro">
+                {[['','Todos'],['activo','En curso'],['finalizado','Finalizados']].map(([val,lbl])=>(
+                  <button key={val} onClick={()=>setFiltroEstado(val)}
+                    className={`px-3 py-2 text-xs font-semibold transition-all ${filtroEstado===val?'bg-atsc-azul-oscuro text-white':'bg-white text-atsc-gris-texto hover:bg-atsc-fondo'}`}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
 
-          <div>
-            <label className="label mb-1">Categoría</label>
-            <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} className="input w-40">
-              <option value="">Todas</option>
-              {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          </div>
-
-          {(filtroAnio || filtroNombre || filtroCategoria) && (
-            <button
-              onClick={() => { setFiltroAnio(''); setFiltroNombre(''); setFiltroCategoria('') }}
-              className="btn-ghost text-xs mt-5"
-            >
-              Limpiar filtros
-            </button>
+          {/* Chips */}
+          {hayFiltros && (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              {filtroAnio      && <span className="badge-azul flex items-center gap-1">{filtroAnio}<button onClick={()=>setFiltroAnio('')}><X size={10}/></button></span>}
+              {filtroCategoria && <span className="badge-azul flex items-center gap-1">{categorias.find(c=>String(c.id)===String(filtroCategoria))?.nombre}<button onClick={()=>setFiltroCategoria('')}><X size={10}/></button></span>}
+              {filtroNombre    && <span className="badge-azul flex items-center gap-1">"{filtroNombre}"<button onClick={()=>setFiltroNombre('')}><X size={10}/></button></span>}
+              {filtroEstado    && <span className="badge-azul flex items-center gap-1">{filtroEstado==='activo'?'En curso':'Finalizados'}<button onClick={()=>setFiltroEstado('')}><X size={10}/></button></span>}
+            </div>
           )}
         </div>
       </div>
@@ -151,20 +183,23 @@ export default function Torneos() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map(t => (
-                <tr key={t.id} className="table-row cursor-pointer" onClick={() => navigate(`/torneos/${t.id}`)}>
-                  <td className="table-cell">
-                    <span className="badge-azul">{t.fecha}</span>
-                  </td>
-                  <td className="table-cell font-semibold text-atsc-azul-oscuro">{t.nombre}</td>
-                  <td className="table-cell">
-                    <span className="badge-gris">{t.categoria?.nombre || '—'}</span>
-                  </td>
-                  <td className="table-cell text-right">
-                    <ChevronRight size={16} className="text-atsc-gris-texto ml-auto" />
-                  </td>
-                </tr>
-              ))}
+              {sorted.map(t => {
+                const esActual = t.fecha === String(new Date().getFullYear())
+                return (
+                  <tr key={t.id} className="table-row cursor-pointer" onClick={()=>navigate(`/torneos/${t.id}`)}>
+                    <td className="table-cell">
+                      <span className={esActual ? 'badge-verde' : 'badge-gris'}>{t.fecha}</span>
+                    </td>
+                    <td className="table-cell font-semibold text-atsc-azul-oscuro">{t.nombre}</td>
+                    <td className="table-cell">
+                      <span className="badge-azul">{t.categoria?.nombre || '—'}</span>
+                    </td>
+                    <td className="table-cell text-right">
+                      <ChevronRight size={16} className="text-atsc-gris-texto ml-auto" />
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
