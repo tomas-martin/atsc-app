@@ -58,6 +58,9 @@ export const torneoService = {
   update:       (id, data) => api.put(`/torneos/${id}`, data),
   getPosiciones:(id)     => api.get(`/torneos/${id}/posiciones`),
   getPartidos:  (id)     => api.get(`/torneos/${id}/partidos`),
+  getFixture:   (id)     => api.get(`/torneos/${id}/fixture`),
+  getPlantel:   (id)     => api.get(`/torneos/${id}/plantel`),
+  getHistorial: (id)     => api.get(`/torneos/${id}/historial`),
 }
 
 export const categoriaService = {

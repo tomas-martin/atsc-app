@@ -11,6 +11,8 @@ import JugadorFicha from './pages/JugadorFicha'
 import Partidos     from './pages/Partidos'
 import PartidoForm  from './pages/PartidoForm'
 import PartidoFicha from './pages/PartidoFicha'
+import Torneos       from './pages/Torneos'
+import TorneoDetalle from './pages/TorneoDetalle'
 
 // Rutas protegidas (requieren login)
 function PrivateRoute({ children }) {
@@ -39,10 +41,11 @@ function AppRoutes() {
       <Route path="/partidos"           element={<PrivateRoute><Partidos /></PrivateRoute>} />
       <Route path="/partidos/nuevo"     element={<PrivateRoute><PartidoForm /></PrivateRoute>} />
       <Route path="/partidos/:id"       element={<PrivateRoute><PartidoFicha /></PrivateRoute>} />
-      <Route path="/torneos"            element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Torneos — próximamente</div></PrivateRoute>} />
       <Route path="/estadisticas"       element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Estadísticas — próximamente</div></PrivateRoute>} />
       <Route path="/cuotas"             element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Cuotas — próximamente</div></PrivateRoute>} />
       <Route path="/asistencia"         element={<PrivateRoute><div className="p-8 text-atsc-gris-texto">Módulo Asistencia — próximamente</div></PrivateRoute>} />
+      <Route path="/torneos"    element={<PrivateRoute><Torneos /></PrivateRoute>} />
+      <Route path="/torneos/:id" element={<PrivateRoute><TorneoDetalle /></PrivateRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
