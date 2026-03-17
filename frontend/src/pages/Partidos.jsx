@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Plus, Eye, ChevronLeft, ChevronRight, Lock,
-         ChevronUp, ChevronDown, ChevronsUpDown, Filter, X } from 'lucide-react'
+import { Calendar, Plus, Eye, ChevronLeft, ChevronRight, Lock, Filter, X } from 'lucide-react'
 import { partidoService, torneoService, categoriaService } from '../services/api'
 
 function formatFecha(f) {
@@ -15,29 +14,12 @@ function formatFecha(f) {
   } catch { return '—' }
 }
 
-function SortIcon({ campo, sortBy, sortDir }) {
-  if (sortBy !== campo) return <ChevronsUpDown size={13} className="text-atsc-gris-claro" />
-  return sortDir === 'asc' ? <ChevronUp size={13} className="text-atsc-azul-claro" /> : <ChevronDown size={13} className="text-atsc-azul-claro" />
-}
-
-function Th({ campo, label, sortBy, sortDir, onSort, className = '' }) {
-  return (
-    <th onClick={() => onSort(campo)}
-      className={`table-header cursor-pointer select-none hover:text-atsc-azul-oscuro ${sortBy===campo?'text-atsc-azul-claro':''} ${className}`}>
-      <div className="flex items-center gap-1">{label}<SortIcon campo={campo} sortBy={sortBy} sortDir={sortDir} /></div>
-    </th>
-  )
-}
-
 export default function Partidos() {
   const navigate = useNavigate()
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [filtroTorneo, setFiltroTorneo]       = useState('')
   const [filtroCerrado, setFiltroCerrado]     = useState('')
-  const [sortBy, setSortBy]   = useState('fecha')
-  const [sortDir, setSortDir] = useState('desc')
-  const [page, setPage]       = useState(1)
-  const limit = 50
+  const [fechaIdx, setFechaIdx]               = useState(0)
 
   const { data: categorias = [] } = useQuery({
     queryKey: ['categorias'],
@@ -54,63 +36,53 @@ export default function Partidos() {
     return todosLosTorneos.filter(t => String(t.categoriaId) === String(filtroCategoria))
   }, [todosLosTorneos, filtroCategoria])
 
-  useEffect(() => { setFiltroTorneo(''); setPage(1) }, [filtroCategoria])
+  useEffect(() => { setFiltroTorneo(''); setFechaIdx(0) }, [filtroCategoria])
+  useEffect(() => { setFechaIdx(0) }, [filtroTorneo, filtroCerrado])
 
   const { data, isLoading } = useQuery({
     queryKey: ['partidos', filtroTorneo, filtroCerrado],
     queryFn: () => partidoService.getAll({
       torneoId: filtroTorneo  || undefined,
       cerrado:  filtroCerrado !== '' ? filtroCerrado : undefined,
-      page: 1, limit: 500,
+      page: 1, limit: 1000,
     }).then(r => r.data),
     keepPreviousData: true,
   })
 
-  const todosPartidos = useMemo(() => {
+  const fechas = useMemo(() => {
     let lista = data?.data || []
+
     if (filtroCategoria && !filtroTorneo) {
       const ids = new Set(torneosDisponibles.map(t => t.id))
       lista = lista.filter(p => ids.has(p.torneoId))
     }
-    return lista
+
+    // Agrupar por fecha + torneo + fechaNro
+    const grupos = {}
+    for (const p of lista) {
+      const fechaStr = p.fecha ? p.fecha.split('T')[0] : '0000'
+      const key = `${fechaStr}__${p.torneoId}__${p.fechaNro || 0}`
+      if (!grupos[key]) {
+        grupos[key] = { key, fecha: fechaStr, fechaNro: p.fechaNro, torneo: p.torneo, partidos: [] }
+      }
+      grupos[key].partidos.push(p)
+    }
+
+    // Ordenar fechas desc
+    return Object.values(grupos).sort((a, b) => {
+      if (a.fecha > b.fecha) return -1
+      if (a.fecha < b.fecha) return 1
+      return (Number(b.fechaNro)||0) - (Number(a.fechaNro)||0)
+    })
   }, [data, filtroCategoria, filtroTorneo, torneosDisponibles])
 
-  const partidos = useMemo(() => {
-    const sorted = [...todosPartidos].sort((a, b) => {
-      let valA, valB
-      switch (sortBy) {
-        case 'fecha':          valA = a.fecha||''; valB = b.fecha||''; break
-        case 'fechaNro':       valA = Number(a.fechaNro)||0; valB = Number(b.fechaNro)||0; break
-        case 'torneo':         valA = (a.torneo?.nombre||'').toLowerCase(); valB = (b.torneo?.nombre||'').toLowerCase(); break
-        case 'local':          valA = (a.equipoLocal?.nombre||'').toLowerCase(); valB = (b.equipoLocal?.nombre||'').toLowerCase(); break
-        case 'visitante':      valA = (a.equipoVisitante?.nombre||'').toLowerCase(); valB = (b.equipoVisitante?.nombre||'').toLowerCase(); break
-        case 'golesLocal':     valA = Number(a.golesLocal)||0; valB = Number(b.golesLocal)||0; break
-        case 'golesVisitante': valA = Number(a.golesVisitante)||0; valB = Number(b.golesVisitante)||0; break
-        case 'totalGoles':     valA = (Number(a.golesLocal)||0)+(Number(a.golesVisitante)||0); valB = (Number(b.golesLocal)||0)+(Number(b.golesVisitante)||0); break
-        case 'estado':         valA = a.cerrado?1:0; valB = b.cerrado?1:0; break
-        default: valA = a.fecha||''; valB = b.fecha||''
-      }
-      if (valA < valB) return sortDir==='asc'?-1:1
-      if (valA > valB) return sortDir==='asc'?1:-1
-      return 0
-    })
-    return sorted.slice((page-1)*limit, page*limit)
-  }, [todosPartidos, sortBy, sortDir, page])
-
-  const total    = todosPartidos.length
-  const totalPag = Math.ceil(total / limit)
-
-  const handleSort = (campo) => {
-    if (sortBy===campo) setSortDir(d=>d==='asc'?'desc':'asc')
-    else { setSortBy(campo); setSortDir(campo==='fecha'?'desc':'asc') }
-    setPage(1)
-  }
-
-  const limpiar = () => { setFiltroCategoria(''); setFiltroTorneo(''); setFiltroCerrado(''); setPage(1) }
+  const fechaActual = fechas[fechaIdx]
+  const totalFechas = fechas.length
+  const limpiar = () => { setFiltroCategoria(''); setFiltroTorneo(''); setFiltroCerrado(''); setFechaIdx(0) }
   const hayFiltros = filtroCategoria || filtroTorneo || filtroCerrado !== ''
 
   return (
-    <div className="max-w-[1400px] mx-auto px-8 py-7">
+    <div className="max-w-[1200px] mx-auto px-8 py-7">
 
       <div className="flex items-start justify-between mb-7">
         <div>
@@ -120,7 +92,10 @@ export default function Partidos() {
             </span>
             Partidos
           </h1>
-          <p className="text-sm text-atsc-gris-texto mt-1 ml-[52px]">{total} partido{total!==1?'s':''}</p>
+          <p className="text-sm text-atsc-gris-texto mt-1 ml-[52px]">
+            {totalFechas} fecha{totalFechas !== 1 ? 's' : ''}
+            {fechaActual && ` · ${fechaActual.partidos.length} partido${fechaActual.partidos.length !== 1 ? 's' : ''}`}
+          </p>
         </div>
         <button onClick={() => navigate('/partidos/nuevo')} className="btn-primary">
           <Plus size={16} />Nuevo Partido
@@ -142,23 +117,23 @@ export default function Partidos() {
           <div className="flex items-end gap-4 flex-wrap">
             <div>
               <label className="label">Categoría</label>
-              <select value={filtroCategoria} onChange={e=>setFiltroCategoria(e.target.value)} className="input w-40">
+              <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} className="input w-40">
                 <option value="">Todas</option>
-                {categorias.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
+                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
             <div className="flex-1 max-w-sm">
               <label className="label">Torneo</label>
-              <select value={filtroTorneo} onChange={e=>{setFiltroTorneo(e.target.value);setPage(1)}} className="input">
+              <select value={filtroTorneo} onChange={e => setFiltroTorneo(e.target.value)} className="input">
                 <option value="">— Todos —</option>
-                {torneosDisponibles.map(t=><option key={t.id} value={t.id}>{t.nombre} {t.fecha}</option>)}
+                {torneosDisponibles.map(t => <option key={t.id} value={t.id}>{t.nombre} {t.fecha}</option>)}
               </select>
             </div>
             <div>
               <label className="label">Estado</label>
               <div className="flex rounded-lg overflow-hidden border-2 border-atsc-gris-claro">
-                {[['','Todos'],['false','En curso'],['true','Cerrados']].map(([val,lbl])=>(
-                  <button key={val} onClick={()=>{setFiltroCerrado(val);setPage(1)}}
+                {[['','Todos'],['false','En curso'],['true','Cerrados']].map(([val,lbl]) => (
+                  <button key={val} onClick={() => setFiltroCerrado(val)}
                     className={`px-3 py-2 text-xs font-semibold transition-all ${filtroCerrado===val?'bg-atsc-azul-oscuro text-white':'bg-white text-atsc-gris-texto hover:bg-atsc-fondo'}`}>
                     {lbl}
                   </button>
@@ -166,83 +141,113 @@ export default function Partidos() {
               </div>
             </div>
           </div>
-          {hayFiltros && (
-            <div className="flex items-center gap-2 mt-3 flex-wrap">
-              {filtroCategoria && <span className="badge-azul flex items-center gap-1">{categorias.find(c=>String(c.id)===String(filtroCategoria))?.nombre}<button onClick={()=>setFiltroCategoria('')}><X size={10}/></button></span>}
-              {filtroTorneo && <span className="badge-azul flex items-center gap-1">{torneosDisponibles.find(t=>String(t.id)===String(filtroTorneo))?.nombre}<button onClick={()=>setFiltroTorneo('')}><X size={10}/></button></span>}
-              {filtroCerrado!=='' && <span className="badge-azul flex items-center gap-1">{filtroCerrado==='true'?'Cerrados':'En curso'}<button onClick={()=>setFiltroCerrado('')}><X size={10}/></button></span>}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="card">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="w-8 h-8 border-2 border-atsc-gris-claro border-t-atsc-azul-claro rounded-full animate-spin" />
-          </div>
-        ) : partidos.length === 0 ? (
-          <div className="text-center py-16">
-            <Calendar size={40} className="text-atsc-gris-claro mx-auto mb-3" />
-            <p className="text-atsc-gris-texto font-medium">No hay partidos con esos filtros</p>
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-atsc-gris-claro">
-                <Th campo="fecha"          label="Fecha"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-                <Th campo="torneo"         label="Torneo"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-                <Th campo="fechaNro"       label="F°"        sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
-                <Th campo="local"          label="Local"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-                <Th campo="golesLocal"     label="GL"        sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
-                <th className="table-header text-center">-</th>
-                <Th campo="golesVisitante" label="GV"        sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
-                <Th campo="visitante"      label="Visitante" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-                <Th campo="totalGoles"     label="Total"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
-                <Th campo="estado"         label="Estado"    sortBy={sortBy} sortDir={sortDir} onSort={handleSort} className="text-center" />
-                <th className="table-header text-right">Ver</th>
-              </tr>
-            </thead>
-            <tbody>
-              {partidos.map(p => {
-                const esATSC_local = p.equipoLocal?.nombre?.toUpperCase().includes('TALLERES')
-                const esATSC_vis   = p.equipoVisitante?.nombre?.toUpperCase().includes('TALLERES')
-                return (
-                  <tr key={p.id} className={`table-row ${(esATSC_local||esATSC_vis)?'bg-blue-50/30':''}`}>
-                    <td className="table-cell text-sm">{formatFecha(p.fecha)}</td>
-                    <td className="table-cell text-sm text-atsc-gris-texto max-w-[150px] truncate">{p.torneo?.nombre||'—'}</td>
-                    <td className="table-cell text-center">{p.fechaNro?<span className="badge-azul">F{p.fechaNro}</span>:'—'}</td>
-                    <td className={`table-cell text-sm font-semibold ${esATSC_local?'text-atsc-azul-claro':''}`}>{p.equipoLocal?.nombre||'—'}</td>
-                    <td className="table-cell text-center font-condensed font-black text-lg">{p.golesLocal}</td>
-                    <td className="table-cell text-center text-atsc-gris-texto font-bold">-</td>
-                    <td className="table-cell text-center font-condensed font-black text-lg">{p.golesVisitante}</td>
-                    <td className={`table-cell text-sm font-semibold ${esATSC_vis?'text-atsc-azul-claro':''}`}>{p.equipoVisitante?.nombre||'—'}</td>
-                    <td className="table-cell text-center text-sm text-atsc-gris-texto">{(Number(p.golesLocal)||0)+(Number(p.golesVisitante)||0)}</td>
-                    <td className="table-cell text-center">
-                      {p.cerrado
-                        ?<span className="badge-gris flex items-center gap-1 justify-center"><Lock size={10}/>Cerrado</span>
-                        :<span className="badge-verde">En curso</span>}
-                    </td>
-                    <td className="table-cell text-right">
-                      <button onClick={()=>navigate(`/partidos/${p.id}`)} className="btn-ghost px-2 py-1.5 text-xs"><Eye size={14}/></button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-        {totalPag > 1 && (
-          <div className="px-4 py-3 border-t border-atsc-gris-claro flex items-center justify-between">
-            <span className="text-sm text-atsc-gris-texto">Mostrando {(page-1)*limit+1}–{Math.min(page*limit,total)} de {total}</span>
-            <div className="flex gap-2">
-              <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} className="btn-ghost px-2 py-1 disabled:opacity-40"><ChevronLeft size={16}/></button>
-              <button onClick={()=>setPage(p=>Math.min(totalPag,p+1))} disabled={page===totalPag} className="btn-ghost px-2 py-1 disabled:opacity-40"><ChevronRight size={16}/></button>
+      {/* Contenido */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-atsc-gris-claro border-t-atsc-azul-claro rounded-full animate-spin" />
+        </div>
+      ) : fechas.length === 0 ? (
+        <div className="card text-center py-16">
+          <Calendar size={40} className="text-atsc-gris-claro mx-auto mb-3" />
+          <p className="text-atsc-gris-texto font-medium">No hay partidos con esos filtros</p>
+        </div>
+      ) : (
+        <>
+          {/* Navegador */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => setFechaIdx(i => Math.max(0, i-1))}
+              disabled={fechaIdx === 0}
+              className="btn-outline disabled:opacity-40 flex items-center gap-1"
+            >
+              <ChevronLeft size={16} /> Anterior
+            </button>
+
+            <div className="text-center">
+              <div className="font-condensed text-xl font-black text-atsc-azul-oscuro">
+                {fechaActual?.torneo?.nombre}
+                {fechaActual?.fechaNro ? ` — Fecha ${fechaActual.fechaNro}` : ''}
+              </div>
+              <div className="text-sm text-atsc-gris-texto mt-0.5">
+                {formatFecha(fechaActual?.fecha)} · {fechaIdx + 1} / {totalFechas}
+              </div>
             </div>
+
+            <button
+              onClick={() => setFechaIdx(i => Math.min(totalFechas-1, i+1))}
+              disabled={fechaIdx === totalFechas-1}
+              className="btn-outline disabled:opacity-40 flex items-center gap-1"
+            >
+              Siguiente <ChevronRight size={16} />
+            </button>
           </div>
-        )}
-      </div>
+
+          {/* Tabla de partidos */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title flex items-center gap-2">
+                <Calendar size={14} />
+                {fechaActual?.torneo?.nombre}
+                {fechaActual?.fechaNro ? ` · Fecha ${fechaActual.fechaNro}` : ''}
+              </span>
+              <span className="badge-gris">{fechaActual?.partidos.length} partidos</span>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-atsc-gris-claro bg-atsc-azul-oscuro">
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-white">Local</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold uppercase text-white w-36">Resultado</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-white">Visitante</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold uppercase text-white w-24">Estado</th>
+                  <th className="px-4 py-3 w-16"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {fechaActual?.partidos.map(p => {
+                  const esATSC_local = p.equipoLocal?.nombre?.toUpperCase().includes('TALLERES')
+                  const esATSC_vis   = p.equipoVisitante?.nombre?.toUpperCase().includes('TALLERES')
+                  const rowClass = (esATSC_local || esATSC_vis)
+                    ? 'border-b border-atsc-gris-claro bg-blue-50/50'
+                    : 'table-row'
+                  return (
+                    <tr key={p.id} className={rowClass}>
+                      <td className={`px-4 py-3 font-semibold text-sm ${esATSC_local ? 'text-atsc-azul-claro' : 'text-atsc-azul-oscuro'}`}>
+                        {p.equipoLocal?.nombre || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {p.cerrado ? (
+                          <span className="font-condensed font-black text-2xl text-atsc-azul-oscuro">
+                            {p.golesLocal} - {p.golesVisitante}
+                          </span>
+                        ) : (
+                          <span className="text-atsc-gris-texto font-bold text-lg">vs</span>
+                        )}
+                      </td>
+                      <td className={`px-4 py-3 font-semibold text-sm ${esATSC_vis ? 'text-atsc-azul-claro' : 'text-atsc-azul-oscuro'}`}>
+                        {p.equipoVisitante?.nombre || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {p.cerrado
+                          ? <span className="badge-gris flex items-center gap-1 justify-center text-[10px]"><Lock size={9}/>Cerrado</span>
+                          : <span className="badge-verde text-[10px]">Pendiente</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => navigate(`/partidos/${p.id}`)} className="btn-ghost px-2 py-1 text-xs">
+                          <Eye size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   )
 }
