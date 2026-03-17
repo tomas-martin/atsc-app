@@ -8,18 +8,19 @@ const prisma = new PrismaClient()
 // GET /api/partidos
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { torneoId, cerrado, page = 1, limit = 20 } = req.query
+    const { torneoId, cerrado, categoriaId, page = 1, limit = 20 } = req.query
     const where = {}
-    if (torneoId) where.torneoId  = Number(torneoId)
+    if (torneoId)    where.torneoId = Number(torneoId)
     if (cerrado !== undefined) where.cerrado = cerrado === 'true'
+    if (categoriaId) where.torneo = { categoriaId: Number(categoriaId) }
 
     const [total, partidos] = await Promise.all([
       prisma.partido.count({ where }),
       prisma.partido.findMany({
         where, skip: (Number(page)-1)*Number(limit), take: Number(limit),
-        orderBy: { fecha: 'desc' },
+        orderBy: [{ fecha: 'desc' }],
         include: {
-          torneo:          { select: { id: true, nombre: true } },
+          torneo:          { select: { id: true, nombre: true, categoriaId: true } },
           equipoLocal:     { select: { id: true, nombre: true } },
           equipoVisitante: { select: { id: true, nombre: true } },
           _count:          { select: { plantel: true } }
