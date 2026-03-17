@@ -70,9 +70,9 @@ export default function Partidos() {
 
     // Ordenar fechas desc
     return Object.values(grupos).sort((a, b) => {
-      if (a.fecha > b.fecha) return -1
-      if (a.fecha < b.fecha) return 1
-      return (Number(b.fechaNro)||0) - (Number(a.fechaNro)||0)
+  if (a.fecha < b.fecha) return -1
+  if (a.fecha > b.fecha) return 1
+  return (Number(a.fechaNro)||0) - (Number(b.fechaNro)||0)
     })
   }, [data, filtroCategoria, filtroTorneo, torneosDisponibles])
 
